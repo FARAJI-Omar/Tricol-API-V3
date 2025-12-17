@@ -46,11 +46,6 @@
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <!-- Liquibase for database migrations -->
-        <dependency>
-            <groupId>org.liquibase</groupId>
-            <artifactId>liquibase-core</artifactId>
-        </dependency>
         <!-- mapstruct -->
         <dependency>
             <groupId>org.mapstruct</groupId>
