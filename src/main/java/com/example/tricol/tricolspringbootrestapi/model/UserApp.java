@@ -32,6 +32,6 @@ public class UserApp {
     @JoinColumn(name = "role_id")
     private RoleApp role;
     
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private Set<UserPermission> userPermissions = new HashSet<>();
 }

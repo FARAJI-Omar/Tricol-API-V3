@@ -25,14 +25,14 @@ public class JwtUtil {
     }
 
     public String generateToken(String username, String role, Set<String> permissions) {
-        return Jwts.builder()
+        String token = Jwts.builder()
                 .subject(username)
                 .claim("role", role)
-                .claim("permissions", permissions)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSigningKey())
                 .compact();
+        return token;
     }
 
     public boolean validateToken(String token) {
@@ -43,6 +43,7 @@ public class JwtUtil {
                     .parseSignedClaims(token);
             return true;
         } catch (Exception e) {
+            System.out.println("Token validation failed: " + e.getMessage());
             return false;
         }
     }
@@ -53,12 +54,6 @@ public class JwtUtil {
 
     public String extractRole(String token) {
         return getClaims(token).get("role", String.class);
-    }
-
-    @SuppressWarnings("unchecked")
-    public Set<String> extractPermissions(String token) {
-        List<String> permissionsList = getClaims(token).get("permissions", List.class);
-        return permissionsList != null ? Set.copyOf(permissionsList) : Set.of();
     }
 
     private Claims getClaims(String token) {
