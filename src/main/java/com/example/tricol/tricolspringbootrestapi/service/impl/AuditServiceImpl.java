@@ -25,4 +25,20 @@ public class AuditServiceImpl implements AuditService {
         
         auditLogRepository.save(auditLog);
     }
+
+    @Override
+    public void logPermissionChange(Long userId, String username, String permissionName, boolean granted, Long adminId) {
+        AuditLog auditLog = new AuditLog();
+        auditLog.setUsername(username);
+        auditLog.setAction(granted ? "PERMISSION_GRANTED" : "PERMISSION_REVOKED");
+        auditLog.setTimestamp(LocalDateTime.now());
+        auditLog.setEntityId(userId.toString());
+        auditLog.setEntityType("USER_PERMISSION");
+        auditLog.setDetails(String.format("Permission '%s' %s by admin ID: %d",
+                permissionName,
+                granted ? "granted" : "revoked",
+                adminId));
+
+        auditLogRepository.save(auditLog);
+    }
 }
