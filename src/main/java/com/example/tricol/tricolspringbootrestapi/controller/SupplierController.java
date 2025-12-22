@@ -15,6 +15,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,19 +27,10 @@ public class SupplierController {
     @Autowired
     private SupplierServiceInterface supplierService;
 
-    @Operation(
-            summary = "Create a new supplier",
-            description = "Creates a new supplier with contact information and business details"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Supplier created successfully",
-                    content = @Content(schema = @Schema(implementation = Supplier.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid input data",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "Internal server error",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    })
+    // ...existing code...
+
     @PostMapping("/create")
+    @PreAuthorize("hasAuthority('FOURNISSEUR_CREATE')")
     public ResponseEntity<Supplier> createSupplier(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Supplier data to create",
@@ -61,6 +53,7 @@ public class SupplierController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping
+    @PreAuthorize("hasAuthority('FOURNISSEUR_READ')")
     public ResponseEntity<List<SupplierDTO>> getAllSuppliers() {
         List<SupplierDTO> suppliers = supplierService.getSuppliers();
         return ResponseEntity.ok(suppliers);
@@ -79,6 +72,7 @@ public class SupplierController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('FOURNISSEUR_READ')")
     public ResponseEntity<SupplierDTO> getSupplierById(
             @Parameter(description = "ID of the supplier to retrieve", required = true, example = "1")
             @PathVariable Long id) {
@@ -102,6 +96,7 @@ public class SupplierController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('FOURNISSEUR_UPDATE')")
     public ResponseEntity<SupplierDTO> updateSupplier(
             @Parameter(description = "ID of the supplier to update", required = true, example = "1")
             @PathVariable Long id,
@@ -127,6 +122,7 @@ public class SupplierController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('FOURNISSEUR_DELETE')")
     public ResponseEntity<String> deleteSupplier(
             @Parameter(description = "ID of the supplier to delete", required = true, example = "1")
             @PathVariable Long id) {
@@ -145,6 +141,7 @@ public class SupplierController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/search")
+    @PreAuthorize("hasAuthority('FOURNISSEUR_READ')")
     public ResponseEntity<List<SupplierDTO>> searchSuppliers(
             @Parameter(description = "Search query for supplier society or contact agent", required = true, example = "ABC Corp")
             @RequestParam("q") String query) {

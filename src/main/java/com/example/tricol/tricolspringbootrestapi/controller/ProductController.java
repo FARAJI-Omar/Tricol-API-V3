@@ -15,6 +15,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -62,6 +63,7 @@ public class ProductController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('PRODUIT_READ')")
     public ResponseEntity<ProductDTO> getProductById(
             @Parameter(description = "ID of the product to retrieve", required = true, example = "1")
             @PathVariable Long id){
@@ -80,6 +82,7 @@ public class ProductController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping
+    @PreAuthorize("hasAuthority('PRODUIT_READ')")
     public ResponseEntity<List<ProductDTO>> getProducts(){
         List<ProductDTO> products = productService.getProducts();
         return ResponseEntity.status(HttpStatus.OK).body(products);
@@ -100,6 +103,7 @@ public class ProductController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('PRODUIT_UPDATE')")
     public ResponseEntity<ProductDTO> updateProduct(
             @Parameter(description = "ID of the product to update", required = true, example = "1")
             @PathVariable Long id,
@@ -125,6 +129,7 @@ public class ProductController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('PRODUIT_DELETE')")
     public ResponseEntity<String> deleteProduct(
             @Parameter(description = "ID of the product to delete", required = true, example = "1")
             @PathVariable Long id) {
@@ -144,6 +149,7 @@ public class ProductController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/stock/{id}")
+    @PreAuthorize("hasAuthority('PRODUIT_READ')")
     public ResponseEntity<Double> getProductStock(
             @Parameter(description = "ID of the product", required = true, example = "1")
             @PathVariable Long id){
@@ -162,6 +168,7 @@ public class ProductController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/lowstock")
+    @PreAuthorize("hasAuthority('PRODUIT_READ')")
     public ResponseEntity<List<ProductDTO>> getLowStockProducts(){
         List<ProductDTO> lowStockProducts = productService.getLowStockProducts();
         return ResponseEntity.status(HttpStatus.OK).body(lowStockProducts);

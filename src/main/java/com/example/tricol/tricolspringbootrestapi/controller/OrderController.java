@@ -17,6 +17,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,21 +30,10 @@ import java.util.List;
 public class OrderController {
     private final OrderService orderService;
 
-    @Operation(
-            summary = "Create a new order",
-            description = "Creates a new purchase order with supplier and product details"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Order created successfully",
-                    content = @Content(schema = @Schema(implementation = OrderResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid input data",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "Supplier or Product not found",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "Internal server error",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    })
+    // ...existing code...
+
     @PostMapping("/create")
+    @PreAuthorize("hasAuthority('COMMANDE_CREATE')")
     public ResponseEntity<OrderResponse> create(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Order creation request with supplier and items",
@@ -65,6 +56,7 @@ public class OrderController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping
+    @PreAuthorize("hasAuthority('COMMANDE_READ')")
     public ResponseEntity<List<OrderResponse>> getAllOrders(){
         List<OrderResponse> orders = orderService.getAllOrders();
         return ResponseEntity.ok(orders);
@@ -83,6 +75,7 @@ public class OrderController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('COMMANDE_READ')")
     public ResponseEntity<OrderResponse> getOrderById(
             @Parameter(description = "ID of the order to retrieve", required = true, example = "1")
             @PathVariable Long id){
@@ -105,6 +98,7 @@ public class OrderController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/{id}/receive")
+    @PreAuthorize("hasAuthority('COMMANDE_RECEIVE')")
     public ResponseEntity<ReceiveOrderResponse> receiveOrder(
             @Parameter(description = "ID of the order to receive", required = true, example = "1")
             @PathVariable Long id){
@@ -127,6 +121,7 @@ public class OrderController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('COMMANDE_UPDATE')")
     public ResponseEntity<OrderResponse> updateOrder(
             @Parameter(description = "ID of the order to update", required = true, example = "1")
             @PathVariable Long id,
