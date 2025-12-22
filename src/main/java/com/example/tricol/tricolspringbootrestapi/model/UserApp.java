@@ -1,5 +1,6 @@
 package com.example.tricol.tricolspringbootrestapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -48,6 +49,7 @@ public class UserApp {
     @JoinColumn(name = "role_id")
     private RoleApp role;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserPermission> userPermissions = new HashSet<>();
 
