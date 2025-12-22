@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,7 +20,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/admin/users")
+@RequestMapping("/admin/users")
 @RequiredArgsConstructor
 @Tag(name = "User Management", description = "APIs for managing user permissions and roles (Admin only)")
 public class UserManagementController {
@@ -50,7 +51,7 @@ public class UserManagementController {
                     required = true,
                     content = @Content(schema = @Schema(implementation = UserPermissionRequest.class))
             )
-            @RequestBody UserPermissionRequest request,
+            @Valid @RequestBody UserPermissionRequest request,
             Authentication authentication) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         UserPermissionResponse response = userManagementService.assignPermissionToUser(request, userDetails.getUser().getId());
