@@ -1,21 +1,37 @@
 package com.example.tricol.tricolspringbootrestapi.model;
 
+import com.example.tricol.tricolspringbootrestapi.enums.PermissionEnum;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.springframework.security.core.GrantedAuthority;
 
 @Entity
 @Table(name = "permissions")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Permission {
-    
+@Builder
+public class Permission implements GrantedAuthority {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
-    @Column(unique = true, nullable = false)
-    private String code;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, unique = true)
+    private PermissionEnum name;
+
+    private String description;
+
+    @Column(nullable = false)
+    private String resource;
+
+    @Column(nullable = false)
+    private String action;
+
+    @Override
+    public String getAuthority() {
+        return name.name();
+    }
 }
