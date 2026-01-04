@@ -10,6 +10,7 @@ import com.example.tricol.tricolspringbootrestapi.exception.DuplicateResourceExc
 import com.example.tricol.tricolspringbootrestapi.exception.OperationNotAllowedException;
 import com.example.tricol.tricolspringbootrestapi.exception.ResourceNotFoundException;
 import com.example.tricol.tricolspringbootrestapi.mapper.UserPermissionMapper;
+import com.example.tricol.tricolspringbootrestapi.repository.KeycloakUserMappingRepository;
 import com.example.tricol.tricolspringbootrestapi.repository.PermissionRepository;
 import com.example.tricol.tricolspringbootrestapi.repository.RoleRepository;
 import com.example.tricol.tricolspringbootrestapi.repository.UserPermissionRepository;
@@ -18,6 +19,7 @@ import com.example.tricol.tricolspringbootrestapi.security.CustomUserDetails;
 import com.example.tricol.tricolspringbootrestapi.service.AuditService;
 import com.example.tricol.tricolspringbootrestapi.service.UserManagementService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -35,6 +37,10 @@ public class UserManagementServiceImpl implements UserManagementService {
     private final UserPermissionMapper userPermissionMapper;
     private final RoleRepository roleRepository;
     private final AuditService auditService;
+    private final KeycloakUserMappingRepository keycloakMappingRepository;
+
+    @Autowired(required = false)
+    private KeycloakSyncService keycloakSyncService;
 
     @Override
     @Transactional
@@ -58,6 +64,12 @@ public class UserManagementServiceImpl implements UserManagementService {
 
         userPermission = userPermissionRepository.save(userPermission);
 
+        // Sync to Keycloak
+        if (keycloakSyncService != null) {
+            keycloakMappingRepository.findByAppUserId(user.getId())
+                    .ifPresent(mapping -> keycloakSyncService.syncPermissionsToKeycloak(mapping.getKeycloakUserId(), user));
+        }
+
         auditService.logPermissionChange(user.getId(), user.getUsername(),
                 permission.getName().name(), true, adminId);
 
@@ -75,6 +87,12 @@ public class UserManagementServiceImpl implements UserManagementService {
         Permission permission = userPermission.getPermission();
 
         userPermissionRepository.delete(userPermission);
+
+        // Sync to Keycloak
+        if (keycloakSyncService != null) {
+            keycloakMappingRepository.findByAppUserId(userId)
+                    .ifPresent(mapping -> keycloakSyncService.removePermissionFromKeycloak(mapping.getKeycloakUserId(), permission));
+        }
 
         auditService.logPermissionChange(user.getId(), user.getUsername(),
                 permission.getName().name(), false, adminId);
@@ -102,6 +120,12 @@ public class UserManagementServiceImpl implements UserManagementService {
         userPermission.setActive(true);
         userPermission.setRevokedAt(null);
         userPermissionRepository.save(userPermission);
+
+        // Sync to Keycloak
+        if (keycloakSyncService != null) {
+            keycloakMappingRepository.findByAppUserId(userId)
+                    .ifPresent(mapping -> keycloakSyncService.syncPermissionsToKeycloak(mapping.getKeycloakUserId(), user));
+        }
 
         Long adminId = getCurrentUserId();
         auditService.logPermissionChange(user.getId(), user.getUsername(),
@@ -131,6 +155,12 @@ public class UserManagementServiceImpl implements UserManagementService {
         userPermission.setRevokedAt(LocalDateTime.now());
         userPermissionRepository.save(userPermission);
 
+        // Sync to Keycloak
+        if (keycloakSyncService != null) {
+            keycloakMappingRepository.findByAppUserId(userId)
+                    .ifPresent(mapping -> keycloakSyncService.removePermissionFromKeycloak(mapping.getKeycloakUserId(), permission));
+        }
+
         Long adminId = getCurrentUserId();
         auditService.logPermissionChange(user.getId(), user.getUsername(),
                 permission.getName().name(), false, adminId);
@@ -151,6 +181,11 @@ public class UserManagementServiceImpl implements UserManagementService {
 
         user.setRole(role);
         userRepository.save(user);
+
+        // Sync to Keycloak (without password since user already exists)
+        if (keycloakSyncService != null) {
+            keycloakSyncService.syncUserToKeycloak(user);
+        }
 
         auditService.logAction(user.getUsername(), "ROLE_ASSIGNED", userId.toString(), "USER");
     }
