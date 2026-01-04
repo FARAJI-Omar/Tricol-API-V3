@@ -18,6 +18,7 @@ public class ProductController {
     private ProductService productService;
 
     @PostMapping("/create")
+    @PreAuthorize("hasAuthority('PRODUIT_CREATE')")
     public ResponseEntity<String> createProduct(@Valid @RequestBody ProductDTO productDTO){
         productService.createProduct(productDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body("Product Created Successfully");
