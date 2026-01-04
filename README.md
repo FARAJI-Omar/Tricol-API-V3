@@ -86,7 +86,24 @@ Each movement must be recorded with references to the concerned lots.
 
 ## REST API Endpoints
 
-Base URL: `http://localhost:8080/tricol/api/v2`
+Base URL: `http://localhost:8081/tricol/api/v2`
+
+### Authentication
+
+#### Custom JWT Authentication
+- `POST /auth/register` - Register new user (syncs to MySQL + Keycloak)
+- `POST /auth/login` - Login with custom JWT token
+
+#### Keycloak OAuth2 Authentication
+- `POST /keycloak/auth/login` - Login with Keycloak (OAuth2)
+- `POST /keycloak/auth/refresh` - Refresh Keycloak access token
+
+**Note**: Both authentication methods work on all protected endpoints. Users can choose either login method after registration.
+
+### User Management (Admin Only)
+- `POST /users/{userId}/roles/{roleId}` - Assign role to user (syncs to Keycloak)
+- `POST /users/permissions` - Add permission to user (syncs to Keycloak)
+- `DELETE /users/{userId}/permissions/{permissionId}` - Remove permission (syncs to Keycloak)
 
 ### Suppliers
 - `GET /suppliers` - List all suppliers
@@ -120,10 +137,13 @@ Base URL: `http://localhost:8080/tricol/api/v2`
 
 ## Technical Stack
 
-- **Framework**: Spring Boot
-- **Database**: JPA/Hibernate with auto-schema generation
+- **Framework**: Spring Boot 3.5.7
+- **Database**: MySQL with JPA/Hibernate
+- **Security**: Spring Security + Dual JWT (Custom + OAuth2)
+- **Authentication**: Custom JWT + Keycloak OAuth2
 - **Validation**: Jakarta Validation
 - **Mapping**: MapStruct
+- **API Documentation**: Springdoc OpenAPI (Swagger)
 - **Build Tool**: Maven
 - **Java Version**: 17+
 
@@ -148,9 +168,12 @@ src/main/java/com/example/tricol/tricolspringbootrestapi/
 ### Prerequisites
 - Java 17 or higher
 - Maven 3.6+
-- MySQL/PostgreSQL database
+- MySQL database
+- Keycloak 23+ (for OAuth2 authentication)
 
 ### Configuration
+
+#### Database Configuration
 Update `application.properties` with your database configuration:
 ```properties
 spring.datasource.url=jdbc:mysql://localhost:3306/tricol_db
@@ -158,7 +181,35 @@ spring.datasource.username=your_username
 spring.datasource.password=your_password
 ```
 
+#### Keycloak Configuration
+1. **Install and start Keycloak** (port 8080 by default)
+2. **Create realm**: `tricol-realm` (or your preferred name)
+3. **Create client**: `tricol-api-client`
+   - Client authentication: ON
+   - Direct access grants: ON (required for password grant)
+4. **Get client secret** from Credentials tab
+5. **Create realm roles** matching your RoleEnum (ADMIN, USER, MANAGER)
+6. **Create client roles** matching your PermissionEnum (PRODUCT_READ, ORDER_CREATE, etc.)
+
+Update `application.properties`:
+```properties
+# Keycloak OAuth2 Configuration
+spring.security.oauth2.resourceserver.jwt.issuer-uri=http://localhost:8080/realms/tricol-realm
+spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://localhost:8080/realms/tricol-realm/protocol/openid-connect/certs
+
+# Keycloak Admin Client
+keycloak.server-url=http://localhost:8080
+keycloak.realm=tricol
+keycloak.client-id=tricol-api-client
+keycloak.client-secret=your-client-secret
+keycloak.admin-username=
+keycloak.admin-password=
+keycloak.enabled=true
+```
+
 ### Build and Run
+
+#### Local Development
 ```bash
 # Build the project
 mvn clean install
@@ -167,7 +218,117 @@ mvn clean install
 mvn spring-boot:run
 ```
 
-The application will start on `http://localhost:8080/tricol/api/v2`
+The application will start on `http://localhost:8081/tricol/api/v2`
+
+## Authentication & Authorization
+
+### Dual JWT Authentication System
+
+The application supports **two authentication methods** that work simultaneously:
+
+#### 1. Custom JWT Authentication
+- Traditional username/password authentication
+- JWT tokens signed with HMAC-SHA256
+- Tokens stored and validated by the application
+- Best for: Internal applications, mobile apps
+
+#### 2. Keycloak OAuth2 Authentication  
+- Industry-standard OAuth2/OIDC authentication
+- JWT tokens signed with RS256 (RSA)
+- Centralized authentication via Keycloak
+- Best for: SSO, enterprise integration, multiple applications
+
+### How It Works
+
+```
+┌─────────────────────────────────────┐
+│   Single Registration Endpoint      │
+│   POST /auth/register               │
+│   → Saves to MySQL (BCrypt)         │
+│   → Syncs to Keycloak (Argon2)     │
+└─────────────────────────────────────┘
+              ↓
+    ┌─────────┴─────────┐
+    ↓                   ↓
+┌──────────────┐  ┌─────────────────┐
+│ Custom JWT   │  │ Keycloak OAuth2 │
+│ /auth/login  │  │ /keycloak/auth/ │
+└──────────────┘  └─────────────────┘
+    ↓                   ↓
+    └─────────┬─────────┘
+              ↓
+    ┌──────────────────┐
+    │ Protected APIs   │
+    │ (Both tokens OK) │
+    └──────────────────┘
+```
+
+### Authentication Flow
+
+1. **Register**: User registers once via `/auth/register`
+   - User created in MySQL database
+   - User automatically synced to Keycloak with password
+   - Role assignment triggers Keycloak sync
+
+2. **Login**: User can choose either method
+   - **Custom JWT**: `POST /auth/login` → Returns custom JWT
+   - **Keycloak**: `POST /keycloak/auth/login` → Returns Keycloak JWT
+
+3. **Access APIs**: Both tokens work on all endpoints
+   - Add token to `Authorization: Bearer <token>` header
+   - Unified filter detects token type automatically
+   - Validates and authenticates accordingly
+
+### Permission-Based Authorization
+
+The system uses **fine-grained permission-based access control**:
+
+- **Roles**: ADMIN, USER, MANAGER (assigned by admin)
+- **Permissions**: Granular authorities (e.g., PRODUCT_READ, ORDER_CREATE)
+- **Role Permissions**: Each role has default permissions
+- **User Permissions**: Admin can add/remove individual permissions
+- **Auto-sync**: All permission changes sync to Keycloak automatically
+
+### Keycloak Synchronization
+
+Automatic synchronization occurs on:
+- ✅ User registration (with password)
+- ✅ Role assignment
+- ✅ Permission add/remove
+- ✅ Permission activate/deactivate
+
+Keycloak tracks:
+- User accounts with passwords
+- Realm roles (ADMIN, USER, MANAGER)
+- Client roles (permissions)
+- User-role mappings
+- User-permission mappings
+
+#### Docker Deployment (Recommended)
+
+The easiest way to run the application with all dependencies:
+
+```bash
+# Build and start all services (MySQL + API)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+Access the application:
+- API: http://localhost:8080/tricol/api/v2
+- Swagger UI: http://localhost:8080/tricol/api/v2/swagger-ui.html
+
+**For detailed Docker instructions**, see [DOCKER.md](DOCKER.md) which includes:
+- Building custom Docker images
+- Pushing to Docker Hub
+- Manual container management
+- Production deployment tips
+- Troubleshooting guide
 
 ## Key Implementation Details
 
@@ -188,3 +349,53 @@ The system implements First In, First Out (FIFO) stock management:
 
 ### Stock Valuation
 Stock is valued using the FIFO method, ensuring accurate financial reporting based on actual purchase costs in chronological order.
+
+## Security Features
+
+- **Dual JWT Authentication**: Custom + Keycloak OAuth2
+- **Password Hashing**: BCrypt (MySQL) + Argon2 (Keycloak)
+- **Token-based Authorization**: Stateless authentication
+- **Permission-based Access Control**: Fine-grained authorities
+- **Automatic Sync**: Role/permission changes sync to Keycloak
+- **Audit Logging**: All authentication and authorization events logged
+- **CORS Configuration**: Configurable cross-origin access
+- **Method-level Security**: `@PreAuthorize` annotations on endpoints
+
+## API Documentation
+
+Access Swagger UI at: `http://localhost:8081/tricol/api/v2/swagger-ui.html`
+
+The API documentation includes:
+- All available endpoints
+- Request/response schemas
+- Authentication requirements
+- Try-it-out functionality
+
+## Production Deployment Checklist
+
+### Keycloak Configuration
+- [ ] Change default admin password
+- [ ] Use strong client secrets
+- [ ] Enable HTTPS/TLS
+- [ ] Configure proper token lifespans
+- [ ] Set up persistent database (not H2)
+- [ ] Configure backup strategy
+- [ ] Create all required roles and permissions
+
+### Application Configuration  
+- [ ] Use environment variables for secrets
+- [ ] Enable HTTPS
+- [ ] Configure CORS for production domains
+- [ ] Set up proper logging
+- [ ] Configure database connection pooling
+- [ ] Enable actuator endpoints (with security)
+- [ ] Set up monitoring and alerting
+
+### Security
+- [ ] Review and test all permission mappings
+- [ ] Test both authentication methods
+- [ ] Verify token expiration handling
+- [ ] Test role-based access control
+- [ ] Audit log review process
+- [ ] Implement rate limiting
+- [ ] Set up WAF (Web Application Firewall)
