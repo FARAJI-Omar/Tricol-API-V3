@@ -16,6 +16,7 @@ import com.example.tricol.tricolspringbootrestapi.service.AuthService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -37,6 +38,9 @@ public class AuthServiceImpl implements AuthService {
     private final UserMapper userMapper;
     private final AuditService auditService;
 
+    @Autowired(required = false)
+    private KeycloakSyncService keycloakSyncService;
+
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -55,6 +59,11 @@ public class AuthServiceImpl implements AuthService {
         }
 
         user = userRepository.save(user);
+
+        // Sync to Keycloak immediately after registration with plain password
+        if (keycloakSyncService != null) {
+            keycloakSyncService.syncUserToKeycloak(user, request.getPassword());
+        }
 
         auditService.logAction(user.getUsername(), "REGISTER", user.getId().toString(), "USER");
 
