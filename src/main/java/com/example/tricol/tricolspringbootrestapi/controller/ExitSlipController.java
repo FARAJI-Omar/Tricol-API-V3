@@ -4,11 +4,11 @@ import com.example.tricol.tricolspringbootrestapi.dto.request.CreateExitSlipRequ
 import com.example.tricol.tricolspringbootrestapi.dto.response.ExitSlipResponse;
 import com.example.tricol.tricolspringbootrestapi.enums.ExitSlipStatus;
 import com.example.tricol.tricolspringbootrestapi.service.ExitSlipService;
-
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,31 +22,35 @@ public class ExitSlipController {
     private final ExitSlipService exitSlipService;
     
     @PostMapping
-    public ResponseEntity<ExitSlipResponse> createExitSlip(
-            @Valid @RequestBody CreateExitSlipRequest request) {
+    @PreAuthorize("hasAuthority('BON_SORTIE_CREATE')")
+    public ResponseEntity<ExitSlipResponse> createExitSlip(@Valid @RequestBody CreateExitSlipRequest request) {
         ExitSlipResponse response = exitSlipService.createExitSlip(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     
     @PostMapping("/{id}/validate")
+    @PreAuthorize("hasAuthority('BON_SORTIE_VALIDATE')")
     public ResponseEntity<ExitSlipResponse> validateExitSlip(@PathVariable Long id) {
         ExitSlipResponse response = exitSlipService.validateExitSlip(id);
         return ResponseEntity.ok(response);
     }
     
     @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAuthority('BON_SORTIE_CANCEL')")
     public ResponseEntity<ExitSlipResponse> cancelExitSlip(@PathVariable Long id) {
         ExitSlipResponse response = exitSlipService.cancelExitSlip(id);
         return ResponseEntity.ok(response);
     }
     
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('BON_SORTIE_READ')")
     public ResponseEntity<ExitSlipResponse> getExitSlip(@PathVariable Long id) {
         ExitSlipResponse response = exitSlipService.getExitSlip(id);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('BON_SORTIE_READ')")
     public ResponseEntity<List<ExitSlipResponse>> getAllExitSlips(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String workshop) {

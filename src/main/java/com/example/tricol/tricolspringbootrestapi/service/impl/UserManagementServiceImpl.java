@@ -1,0 +1,200 @@
+package com.example.tricol.tricolspringbootrestapi.service.impl;
+
+import com.example.tricol.tricolspringbootrestapi.dto.request.UserPermissionRequest;
+import com.example.tricol.tricolspringbootrestapi.dto.response.UserPermissionResponse;
+import com.example.tricol.tricolspringbootrestapi.model.Permission;
+import com.example.tricol.tricolspringbootrestapi.model.RoleApp;
+import com.example.tricol.tricolspringbootrestapi.model.UserApp;
+import com.example.tricol.tricolspringbootrestapi.model.UserPermission;
+import com.example.tricol.tricolspringbootrestapi.exception.DuplicateResourceException;
+import com.example.tricol.tricolspringbootrestapi.exception.OperationNotAllowedException;
+import com.example.tricol.tricolspringbootrestapi.exception.ResourceNotFoundException;
+import com.example.tricol.tricolspringbootrestapi.mapper.UserPermissionMapper;
+import com.example.tricol.tricolspringbootrestapi.repository.KeycloakUserMappingRepository;
+import com.example.tricol.tricolspringbootrestapi.repository.PermissionRepository;
+import com.example.tricol.tricolspringbootrestapi.repository.RoleRepository;
+import com.example.tricol.tricolspringbootrestapi.repository.UserPermissionRepository;
+import com.example.tricol.tricolspringbootrestapi.repository.UserRepository;
+import com.example.tricol.tricolspringbootrestapi.security.CustomUserDetails;
+import com.example.tricol.tricolspringbootrestapi.service.AuditService;
+import com.example.tricol.tricolspringbootrestapi.service.UserManagementService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+
+@Service
+@RequiredArgsConstructor
+public class UserManagementServiceImpl implements UserManagementService {
+
+    private final UserRepository userRepository;
+    private final PermissionRepository permissionRepository;
+    private final UserPermissionRepository userPermissionRepository;
+    private final UserPermissionMapper userPermissionMapper;
+    private final RoleRepository roleRepository;
+    private final AuditService auditService;
+    private final KeycloakUserMappingRepository keycloakMappingRepository;
+
+    @Autowired(required = false)
+    private KeycloakSyncService keycloakSyncService;
+
+    @Override
+    @Transactional
+    public UserPermissionResponse assignPermissionToUser(UserPermissionRequest request, Long adminId) {
+        UserApp user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        Permission permission = permissionRepository.findById(request.getPermissionId())
+                .orElseThrow(() -> new ResourceNotFoundException("Permission not found"));
+
+        if (userPermissionRepository.findByUserIdAndPermissionId(request.getUserId(), request.getPermissionId()).isPresent()) {
+            throw new DuplicateResourceException("Permission already assigned to user");
+        }
+
+        UserPermission userPermission = UserPermission.builder()
+                .user(user)
+                .permission(permission)
+                .active(true)
+                .grantedBy(adminId)
+                .build();
+
+        userPermission = userPermissionRepository.save(userPermission);
+
+        // Sync to Keycloak
+        if (keycloakSyncService != null) {
+            keycloakMappingRepository.findByAppUserId(user.getId())
+                    .ifPresent(mapping -> keycloakSyncService.syncPermissionsToKeycloak(mapping.getKeycloakUserId(), user));
+        }
+
+        auditService.logPermissionChange(user.getId(), user.getUsername(),
+                permission.getName().name(), true, adminId);
+
+        return userPermissionMapper.toResponse(userPermission);
+    }
+
+    @Override
+    @Transactional
+    public void removePermissionFromUser(Long userId, Long permissionId) {
+        UserPermission userPermission = userPermissionRepository.findByUserIdAndPermissionId(userId, permissionId)
+                .orElseThrow(() -> new ResourceNotFoundException("User permission not found"));
+
+        Long adminId = getCurrentUserId();
+        UserApp user = userPermission.getUser();
+        Permission permission = userPermission.getPermission();
+
+        userPermissionRepository.delete(userPermission);
+
+        // Sync to Keycloak
+        if (keycloakSyncService != null) {
+            keycloakMappingRepository.findByAppUserId(userId)
+                    .ifPresent(mapping -> keycloakSyncService.removePermissionFromKeycloak(mapping.getKeycloakUserId(), permission));
+        }
+
+        auditService.logPermissionChange(user.getId(), user.getUsername(),
+                permission.getName().name(), false, adminId);
+    }
+
+    @Override
+    @Transactional
+    public void activatePermission(Long userId, Long permissionId) {
+        UserApp user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        Permission permission = permissionRepository.findById(permissionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Permission not found"));
+
+        UserPermission userPermission = userPermissionRepository.findByUserIdAndPermissionId(userId, permissionId)
+                .orElseGet(() -> UserPermission.builder()
+                        .user(user)
+                        .permission(permission)
+                        .build());
+
+        if (userPermission.getId() != null && userPermission.isActive()) {
+            throw new OperationNotAllowedException("Permission is already active");
+        }
+
+        userPermission.setActive(true);
+        userPermission.setRevokedAt(null);
+        userPermissionRepository.save(userPermission);
+
+        // Sync to Keycloak
+        if (keycloakSyncService != null) {
+            keycloakMappingRepository.findByAppUserId(userId)
+                    .ifPresent(mapping -> keycloakSyncService.syncPermissionsToKeycloak(mapping.getKeycloakUserId(), user));
+        }
+
+        Long adminId = getCurrentUserId();
+        auditService.logPermissionChange(user.getId(), user.getUsername(),
+                permission.getName().name(), true, adminId);
+    }
+
+    @Override
+    @Transactional
+    public void deactivatePermission(Long userId, Long permissionId) {
+        UserApp user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        Permission permission = permissionRepository.findById(permissionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Permission not found"));
+
+        UserPermission userPermission = userPermissionRepository.findByUserIdAndPermissionId(userId, permissionId)
+                .orElseGet(() -> UserPermission.builder()
+                        .user(user)
+                        .permission(permission)
+                        .build());
+
+        if (userPermission.getId() != null && !userPermission.isActive()) {
+            throw new OperationNotAllowedException("Permission is already deactivated");
+        }
+
+        userPermission.setActive(false);
+        userPermission.setRevokedAt(LocalDateTime.now());
+        userPermissionRepository.save(userPermission);
+
+        // Sync to Keycloak
+        if (keycloakSyncService != null) {
+            keycloakMappingRepository.findByAppUserId(userId)
+                    .ifPresent(mapping -> keycloakSyncService.removePermissionFromKeycloak(mapping.getKeycloakUserId(), permission));
+        }
+
+        Long adminId = getCurrentUserId();
+        auditService.logPermissionChange(user.getId(), user.getUsername(),
+                permission.getName().name(), false, adminId);
+    }
+
+    @Override
+    @Transactional
+    public void assignRoleToUser(Long userId, Long roleId) {
+        UserApp user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (user.getRole() != null) {
+            throw new DuplicateResourceException("User already has a role");
+        }
+
+        RoleApp role = roleRepository.findById(roleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found"));
+
+        user.setRole(role);
+        userRepository.save(user);
+
+        // Sync to Keycloak (without password since user already exists)
+        if (keycloakSyncService != null) {
+            keycloakSyncService.syncUserToKeycloak(user);
+        }
+
+        auditService.logAction(user.getUsername(), "ROLE_ASSIGNED", userId.toString(), "USER");
+    }
+
+    private Long getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails userDetails) {
+            return userDetails.getUser().getId();
+        }
+        return null;
+    }
+}
