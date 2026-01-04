@@ -1,11 +1,17 @@
 package com.example.tricol.tricolspringbootrestapi.security;
 
+import com.example.tricol.tricolspringbootrestapi.enums.JwtTokenType;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -13,6 +19,7 @@ import java.util.Date;
 import java.util.function.Function;
 
 @Service
+@Slf4j
 public class JwtUtil {
 
     @Value("${jwt.secret}")
@@ -23,6 +30,13 @@ public class JwtUtil {
 
     @Value("${jwt.refresh-expiration}")
     private long refreshExpiration;
+
+    @Value("${keycloak.server-url:}")
+    private String keycloakServerUrl;
+
+    @Lazy
+    @Autowired(required = false)
+    private JwtDecoder keycloakJwtDecoder;
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -67,7 +81,7 @@ public class JwtUtil {
         return extractClaim(token, Claims::getExpiration);
     }
 
-    private Claims extractAllClaims(String token) {
+    public Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .verifyWith(getSignInKey())
                 .build()
@@ -78,5 +92,41 @@ public class JwtUtil {
     private SecretKey getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    // Keycloak Token Detection and Validation
+    public JwtTokenType detectTokenType(String token) {
+        try {
+            Claims claims = extractAllClaims(token);
+            String issuer = claims.getIssuer();
+            
+            if (issuer != null && (issuer.contains("keycloak") || issuer.contains(keycloakServerUrl))) {
+                return JwtTokenType.KEYCLOAK;
+            }
+            return JwtTokenType.CUSTOM;
+        } catch (JwtException e) {
+            if (keycloakJwtDecoder != null) {
+                try {
+                    keycloakJwtDecoder.decode(token);
+                    return JwtTokenType.KEYCLOAK;
+                } catch (Exception ex) {
+                    log.error("Unable to determine token type: {}", ex.getMessage());
+                }
+            }
+            return JwtTokenType.CUSTOM;
+        }
+    }
+
+    public boolean validateKeycloakToken(String token) {
+        if (keycloakJwtDecoder == null) {
+            return false;
+        }
+        try {
+            keycloakJwtDecoder.decode(token);
+            return true;
+        } catch (Exception e) {
+            log.error("Keycloak token validation failed: {}", e.getMessage());
+            return false;
+        }
     }
 }
