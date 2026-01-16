@@ -2,6 +2,7 @@ package com.example.tricol.tricolspringbootrestapi.controller;
 
 import com.example.tricol.tricolspringbootrestapi.dto.request.UserPermissionRequest;
 import com.example.tricol.tricolspringbootrestapi.dto.response.UserPermissionResponse;
+import com.example.tricol.tricolspringbootrestapi.dto.response.UserResponse;
 import com.example.tricol.tricolspringbootrestapi.security.CustomUserDetails;
 import com.example.tricol.tricolspringbootrestapi.service.UserManagementService;
 import jakarta.validation.Valid;
@@ -11,12 +12,21 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/admin/users")
 @RequiredArgsConstructor
 public class UserManagementController {
 
     private final UserManagementService userManagementService;
+
+    @GetMapping
+    @PreAuthorize("hasAuthority('USER_MANAGE')")
+    public ResponseEntity<List<UserResponse>> getAllUsers() {
+        List<UserResponse> users = userManagementService.getAllUsers();
+        return ResponseEntity.ok(users);
+    }
 
     @PostMapping("/permissions")
     @PreAuthorize("hasAuthority('USER_MANAGE')")

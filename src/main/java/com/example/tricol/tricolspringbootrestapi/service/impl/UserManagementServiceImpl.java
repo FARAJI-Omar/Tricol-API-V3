@@ -2,6 +2,9 @@ package com.example.tricol.tricolspringbootrestapi.service.impl;
 
 import com.example.tricol.tricolspringbootrestapi.dto.request.UserPermissionRequest;
 import com.example.tricol.tricolspringbootrestapi.dto.response.UserPermissionResponse;
+import com.example.tricol.tricolspringbootrestapi.dto.response.UserResponse;
+import com.example.tricol.tricolspringbootrestapi.dto.response.RoleInfo;
+import com.example.tricol.tricolspringbootrestapi.dto.response.PermissionInfo;
 import com.example.tricol.tricolspringbootrestapi.model.Permission;
 import com.example.tricol.tricolspringbootrestapi.model.RoleApp;
 import com.example.tricol.tricolspringbootrestapi.model.UserApp;
@@ -24,6 +27,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -153,6 +158,33 @@ public class UserManagementServiceImpl implements UserManagementService {
         userRepository.save(user);
 
         auditService.logAction(user.getUsername(), "ROLE_ASSIGNED", userId.toString(), "USER");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserResponse> getAllUsers() {
+        return userRepository.findAll().stream()
+                .map(user -> UserResponse.builder()
+                        .id(user.getId())
+                        .username(user.getUsername())
+                        .email(user.getEmail())
+                        .fullName(user.getFullName())
+                        .createdAt(user.getCreatedAt())
+                        .updatedAt(user.getUpdatedAt())
+                        .role(user.getRole() != null ? RoleInfo.builder()
+                                .id(user.getRole().getId())
+                                .name(user.getRole().getName().name())
+                                .build() : null)
+                        .permissions(user.getUserPermissions().stream()
+                                .map(up -> PermissionInfo.builder()
+                                        .id(up.getPermission().getId())
+                                        .name(up.getPermission().getName().name())
+                                        .active(up.isActive())
+                                        .grantedAt(up.getGrantedAt())
+                                        .build())
+                                .collect(Collectors.toList()))
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private Long getCurrentUserId() {
