@@ -3,6 +3,8 @@ package com.example.tricol.tricolspringbootrestapi.controller;
 import com.example.tricol.tricolspringbootrestapi.dto.request.UserPermissionRequest;
 import com.example.tricol.tricolspringbootrestapi.dto.response.UserPermissionResponse;
 import com.example.tricol.tricolspringbootrestapi.dto.response.UserResponse;
+import com.example.tricol.tricolspringbootrestapi.dto.response.RoleInfo;
+import com.example.tricol.tricolspringbootrestapi.dto.response.PermissionInfo;
 import com.example.tricol.tricolspringbootrestapi.security.CustomUserDetails;
 import com.example.tricol.tricolspringbootrestapi.service.UserManagementService;
 import jakarta.validation.Valid;
@@ -26,6 +28,20 @@ public class UserManagementController {
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<UserResponse> users = userManagementService.getAllUsers();
         return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/roles")
+    @PreAuthorize("hasAuthority('USER_MANAGE')")
+    public ResponseEntity<List<RoleInfo>> getAllRoles() {
+        List<RoleInfo> roles = userManagementService.getAllRoles();
+        return ResponseEntity.ok(roles);
+    }
+
+    @GetMapping("/rolepermissions/{roleId}")
+    @PreAuthorize("hasAuthority('USER_MANAGE')")
+    public ResponseEntity<List<PermissionInfo>> getRolePermissions(@PathVariable Long roleId) {
+        List<PermissionInfo> permissions = userManagementService.getRolePermissions(roleId);
+        return ResponseEntity.ok(permissions);
     }
 
     @PostMapping("/permissions")
@@ -64,4 +80,3 @@ public class UserManagementController {
         return ResponseEntity.ok("Role assigned successfully");
     }
 }
-

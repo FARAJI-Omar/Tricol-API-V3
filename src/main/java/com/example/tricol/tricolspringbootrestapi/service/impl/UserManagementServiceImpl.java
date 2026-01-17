@@ -179,10 +179,33 @@ public class UserManagementServiceImpl implements UserManagementService {
                                 .map(up -> PermissionInfo.builder()
                                         .id(up.getPermission().getId())
                                         .name(up.getPermission().getName().name())
-                                        .active(up.isActive())
-                                        .grantedAt(up.getGrantedAt())
                                         .build())
                                 .collect(Collectors.toList()))
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RoleInfo> getAllRoles() {
+        return roleRepository.findAll().stream()
+                .map(role -> RoleInfo.builder()
+                        .id(role.getId())
+                        .name(role.getName().name())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PermissionInfo> getRolePermissions(Long roleId) {
+        RoleApp role = roleRepository.findById(roleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found with id: " + roleId));
+
+        return role.getPermissions().stream()
+                .map(permission -> PermissionInfo.builder()
+                        .id(permission.getId())
+                        .name(permission.getName().name())
                         .build())
                 .collect(Collectors.toList());
     }
