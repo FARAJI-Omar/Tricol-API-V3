@@ -157,6 +157,24 @@ public class UserManagementServiceImpl implements UserManagementService {
         user.setRole(role);
         userRepository.save(user);
 
+        // Automatically grant all role permissions to the user
+        Long adminId = getCurrentUserId();
+        for (Permission permission : role.getPermissions()) {
+            // Check if user already has this permission
+            if (userPermissionRepository.findByUserIdAndPermissionId(userId, permission.getId()).isEmpty()) {
+                UserPermission userPermission = UserPermission.builder()
+                        .user(user)
+                        .permission(permission)
+                        .active(true)
+                        .grantedBy(adminId)
+                        .build();
+                userPermissionRepository.save(userPermission);
+
+                auditService.logPermissionChange(user.getId(), user.getUsername(),
+                        permission.getName().name(), true, adminId);
+            }
+        }
+
         auditService.logAction(user.getUsername(), "ROLE_ASSIGNED", userId.toString(), "USER");
     }
 
