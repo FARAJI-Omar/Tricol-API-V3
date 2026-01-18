@@ -14,4 +14,5 @@ import java.time.LocalDateTime;
 public class PermissionInfo {
     private Long id;
     private String name;
+    private boolean active;
 }

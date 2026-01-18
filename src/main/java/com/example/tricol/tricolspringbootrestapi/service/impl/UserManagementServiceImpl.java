@@ -206,6 +206,22 @@ public class UserManagementServiceImpl implements UserManagementService {
                 .map(permission -> PermissionInfo.builder()
                         .id(permission.getId())
                         .name(permission.getName().name())
+                        .active(true)
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PermissionInfo> getUserPermissions(Long userId) {
+        UserApp user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        return user.getUserPermissions().stream()
+                .map(up -> PermissionInfo.builder()
+                        .id(up.getPermission().getId())
+                        .name(up.getPermission().getName().name())
+                        .active(up.isActive())
                         .build())
                 .collect(Collectors.toList());
     }

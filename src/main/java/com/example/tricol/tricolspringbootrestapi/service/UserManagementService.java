@@ -17,4 +17,5 @@ public interface UserManagementService {
     List<UserResponse> getAllUsers();
     List<RoleInfo> getAllRoles();
     List<PermissionInfo> getRolePermissions(Long roleId);
+    List<PermissionInfo> getUserPermissions(Long userId);
 }

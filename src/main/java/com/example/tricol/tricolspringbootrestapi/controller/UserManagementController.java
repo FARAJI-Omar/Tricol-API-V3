@@ -30,6 +30,13 @@ public class UserManagementController {
         return ResponseEntity.ok(users);
     }
 
+    @GetMapping("/{userId}/permissions")
+    @PreAuthorize("hasAuthority('USER_MANAGE')")
+    public ResponseEntity<List<PermissionInfo>> getUserPermissions(@PathVariable Long userId) {
+        List<PermissionInfo> permissions = userManagementService.getUserPermissions(userId);
+        return ResponseEntity.ok(permissions);
+    }
+
     @GetMapping("/roles")
     @PreAuthorize("hasAuthority('USER_MANAGE')")
     public ResponseEntity<List<RoleInfo>> getAllRoles() {
