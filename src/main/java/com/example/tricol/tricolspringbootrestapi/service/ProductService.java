@@ -1,6 +1,7 @@
 package com.example.tricol.tricolspringbootrestapi.service;
 
 import com.example.tricol.tricolspringbootrestapi.dto.request.ProductDTO;
+import com.example.tricol.tricolspringbootrestapi.dto.request.UpdateProductRequest;
 import com.example.tricol.tricolspringbootrestapi.model.Product;
 
 import java.util.List;
@@ -12,7 +13,7 @@ public interface ProductService {
 
     List<ProductDTO> getProducts();
 
-    ProductDTO updateProduct(Long id, ProductDTO ProductDTO);
+    ProductDTO updateProduct(Long id, UpdateProductRequest updateProductRequest);
 
     void deleteProduct(Long id);
 

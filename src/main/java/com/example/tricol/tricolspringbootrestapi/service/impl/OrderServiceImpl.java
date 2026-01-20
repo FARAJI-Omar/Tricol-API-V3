@@ -21,6 +21,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -118,9 +119,14 @@ public class OrderServiceImpl implements OrderService {
         // create one stockslot per orderitem (per product)
         List<StockSlot> stockSlots = new ArrayList<>();
 
-        for (OrderItem orderItem : order.getItems()) {
+        // Get the starting lot number for this batch
+        long startingCount = getNextLotNumberSequence();
+
+        for (int i = 0; i < order.getItems().size(); i++) {
+            OrderItem orderItem = order.getItems().get(i);
+
             StockSlot stockSlot = new StockSlot();
-            stockSlot.setLotNumber(generateLotNumber());
+            stockSlot.setLotNumber(generateLotNumber(startingCount + i));
             stockSlot.setOrder(order);
             stockSlot.setProduct(orderItem.getProduct());
             stockSlot.setQuantity(orderItem.getQuantity());
@@ -153,10 +159,33 @@ public class OrderServiceImpl implements OrderService {
         return orderMapper.toReceiveOrderResponse(savedOrder);
     }
 
-    private String generateLotNumber() {
-        long count = stockSlotRepository.count() + 1;
+    private long getNextLotNumberSequence() {
+        int currentYear = java.time.Year.now().getValue();
+        String yearPattern = "LOT-" + currentYear + "-%";
+
+        Optional<StockSlot> latestSlot = stockSlotRepository.findLatestLotNumberByYear(yearPattern);
+
+        if (latestSlot.isPresent()) {
+            String lotNumber = latestSlot.get().getLotNumber();
+            // Extract the sequence number from LOT-YYYY-XXX format
+            String[] parts = lotNumber.split("-");
+            if (parts.length == 3) {
+                try {
+                    return Long.parseLong(parts[2]) + 1;
+                } catch (NumberFormatException e) {
+                    // If parsing fails, fall back to counting
+                    return stockSlotRepository.count() + 1;
+                }
+            }
+        }
+
+        // If no slots exist for this year, start from 1
+        return 1;
+    }
+
+    private String generateLotNumber(long sequence) {
         int year = java.time.Year.now().getValue();
-        return String.format("LOT-%d-%03d", year, count);
+        return String.format("LOT-%d-%03d", year, sequence);
     }
 
     private void saveStockMovementIn(StockSlot stockSlot){

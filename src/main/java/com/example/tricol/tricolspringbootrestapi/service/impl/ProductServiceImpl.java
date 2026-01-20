@@ -1,6 +1,7 @@
 package com.example.tricol.tricolspringbootrestapi.service.impl;
 
 import com.example.tricol.tricolspringbootrestapi.dto.request.ProductDTO;
+import com.example.tricol.tricolspringbootrestapi.dto.request.UpdateProductRequest;
 import com.example.tricol.tricolspringbootrestapi.exception.DuplicateResourceException;
 import com.example.tricol.tricolspringbootrestapi.exception.ResourceNotFoundException;
 import com.example.tricol.tricolspringbootrestapi.mapper.ProductMapper;
@@ -41,11 +42,11 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public ProductDTO updateProduct(Long id, ProductDTO ProductDTO){
+    public ProductDTO updateProduct(Long id, UpdateProductRequest updateProductRequest){
         Product existingProduct = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product with id " + id + " not found"));
 
-        productMapper.updateProductFromDTO(ProductDTO, existingProduct);
+        productMapper.updateProductFromRequest(updateProductRequest, existingProduct);
         return productMapper.toDTO(productRepository.save(existingProduct));
     }
 

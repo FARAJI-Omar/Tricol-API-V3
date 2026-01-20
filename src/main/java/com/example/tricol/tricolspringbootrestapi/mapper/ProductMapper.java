@@ -2,6 +2,7 @@ package com.example.tricol.tricolspringbootrestapi.mapper;
 
 import com.example.tricol.tricolspringbootrestapi.dto.request.ProductDTO;
 import com.example.tricol.tricolspringbootrestapi.dto.request.SupplierDTO;
+import com.example.tricol.tricolspringbootrestapi.dto.request.UpdateProductRequest;
 import com.example.tricol.tricolspringbootrestapi.model.Product;
 import com.example.tricol.tricolspringbootrestapi.model.Supplier;
 import org.mapstruct.BeanMapping;
@@ -22,4 +23,8 @@ public interface ProductMapper {
     // Only update non-null fields from DTO to entity
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void updateProductFromDTO(ProductDTO dto, @MappingTarget Product entity);
+
+    // Only update non-null fields from UpdateProductRequest to entity
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    void updateProductFromRequest(UpdateProductRequest request, @MappingTarget Product entity);
 }

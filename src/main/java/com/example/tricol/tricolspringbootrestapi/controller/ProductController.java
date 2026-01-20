@@ -1,6 +1,7 @@
 package com.example.tricol.tricolspringbootrestapi.controller;
 
 import com.example.tricol.tricolspringbootrestapi.dto.request.ProductDTO;
+import com.example.tricol.tricolspringbootrestapi.dto.request.UpdateProductRequest;
 import com.example.tricol.tricolspringbootrestapi.service.ProductService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,8 +41,8 @@ public class ProductController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('PRODUIT_UPDATE')")
-    public ResponseEntity<ProductDTO> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductDTO productDTO) {
-        ProductDTO updatedProduct = productService.updateProduct(id, productDTO);
+    public ResponseEntity<ProductDTO> updateProduct(@PathVariable Long id, @Valid @RequestBody UpdateProductRequest updateProductRequest) {
+        ProductDTO updatedProduct = productService.updateProduct(id, updateProductRequest);
         return ResponseEntity.status(HttpStatus.OK).body(updatedProduct);
     }
 
