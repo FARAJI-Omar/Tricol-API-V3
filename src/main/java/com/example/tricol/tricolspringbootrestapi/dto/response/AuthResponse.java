@@ -12,6 +12,7 @@ import java.util.Set;
 public class AuthResponse {
     private Long id;
     private String accessToken;
+    private String refreshToken;
     private String username;
     private String role;
     private Set<String> permissions;
