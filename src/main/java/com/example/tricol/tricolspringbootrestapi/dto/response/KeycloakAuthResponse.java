@@ -2,6 +2,8 @@ package com.example.tricol.tricolspringbootrestapi.dto.response;
 
 import lombok.*;
 
+import java.util.Set;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -15,4 +17,6 @@ public class KeycloakAuthResponse {
     private Long expiresIn;
     private String username;
     private String email;
+    private String role;
+    private Set<String> permissions;
 }
